@@ -3206,7 +3206,8 @@ activate_new(pcap_t *handle)
 			 * same applies to LAPD capture.
 			 */
 			if (handle->linktype != DLT_LINUX_IRDA &&
-			    handle->linktype != DLT_LINUX_LAPD)
+			    handle->linktype != DLT_LINUX_LAPD &&
+			    handle->linktype != DLT_NETLINK)
 				handle->linktype = DLT_LINUX_SLL;
 		}
 
