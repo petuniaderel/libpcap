@@ -4186,6 +4186,7 @@ static int pcap_handle_packet_mmap(
 	unsigned char *bp;
 	struct sockaddr_ll *sll;
 	struct pcap_pkthdr pcaphdr;
+	unsigned int snaplen = tp_snaplen;
 
 	/* perform sanity check on internal offset. */
 	if (tp_mac + tp_snaplen > handle->bufsize) {
@@ -4246,11 +4247,13 @@ static int pcap_handle_packet_mmap(
 		hdrp->sll_halen = htons(sll->sll_halen);
 		memcpy(hdrp->sll_addr, sll->sll_addr, SLL_ADDRLEN);
 		hdrp->sll_protocol = sll->sll_protocol;
+
+		snaplen += sizeof(struct sll_header);
 	}
 
         if (handlep->filter_in_userland && handle->fcode.bf_insns &&
             (bpf_filter(handle->fcode.bf_insns, bp,
-                        tp_len, tp_snaplen) == 0))
+                        tp_len, snaplen) == 0))
 		return 0;
 
 	if (!linux_check_direction(handle, sll))
