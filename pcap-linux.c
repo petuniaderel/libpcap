@@ -1475,6 +1475,7 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	int			packet_len, caplen;
 	struct pcap_pkthdr	pcap_header;
 
+        struct bpf_aux_data     aux_data;
 #ifdef HAVE_PF_PACKET_SOCKETS
 	/*
 	 * If this is a cooked device, leave extra room for a
@@ -1658,6 +1659,11 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 			tag->vlan_tpid = htons(ETH_P_8021Q);
 			tag->vlan_tci = htons(aux->tp_vlan_tci);
 
+                        /* store vlan tci to bpf_aux_data struct for userland bpf filter */
+#if defined(TP_STATUS_VLAN_VALID)
+                        aux_data.vlan_tag = htons(aux->tp_vlan_tci) & 0x0fff;
+                        aux_data.vlan_tag_present = (aux->tp_status & TP_STATUS_VLAN_VALID);
+#endif
 			packet_len += VLAN_TAG_LEN;
 		}
 	}
@@ -1702,8 +1708,8 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 
 	/* Run the packet filter if not using kernel filter */
 	if (handlep->filter_in_userland && handle->fcode.bf_insns) {
-		if (bpf_filter(handle->fcode.bf_insns, bp,
-		                packet_len, caplen) == 0)
+		if (bpf_filter1(handle->fcode.bf_insns, bp,
+		                packet_len, caplen, &aux_data) == 0)
 		{
 			/* rejected by filter */
 			return 0;
@@ -4270,10 +4276,15 @@ static int pcap_handle_packet_mmap(
 		snaplen += sizeof(struct sll_header);
 	}
 
-        if (handlep->filter_in_userland && handle->fcode.bf_insns &&
-            (bpf_filter(handle->fcode.bf_insns, bp,
-                        tp_len, snaplen) == 0))
-		return 0;
+        if (handlep->filter_in_userland && handle->fcode.bf_insns) {
+                struct bpf_aux_data aux_data;
+
+                aux_data.vlan_tag = tp_vlan_tci & 0x0fff;
+                aux_data.vlan_tag_present = tp_vlan_tci_valid;
+
+                if (bpf_filter1(handle->fcode.bf_insns, bp, tp_len, tp_snaplen, &aux_data) == 0)
+                        return 0;
+        }
 
 	if (!linux_check_direction(handle, sll))
 		return 0;
