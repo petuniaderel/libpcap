@@ -58,7 +58,6 @@ static const char rcsid[] _U_ =
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <errno.h>
 
 #endif /* WIN32 */
 
@@ -7864,23 +7863,11 @@ gen_ahostop(eaddr, dir)
 }
 
 #if defined(SKF_AD_VLAN_TAG) && defined(SKF_AD_VLAN_TAG_PRESENT)
-static int skf_ad_vlan_tag_present_supported(int bpf_extensions) {
-        return bpf_extensions >= SKF_AD_VLAN_TAG_PRESENT;
-}
-
 static struct block *
-gen_vlan_bpf_extensions(int vlan_num) {
+gen_vlan_bpf_extensions(int vlan_num)
+{
         struct block *b0, *b1;
         struct slist *s;
-        int val = 0, len, r;
-
-        len = sizeof(val);
-        r = getsockopt(bpf_pcap->fd, SOL_SOCKET, SO_BPF_EXTENSIONS, &val, &len);
-        if (r < 0)
-                return NULL;
-
-        if (!skf_ad_vlan_tag_present_supported(val))
-                return NULL;
 
         /* generate new filter code based on extracting packet
          * metadata */
@@ -7908,7 +7895,8 @@ gen_vlan_bpf_extensions(int vlan_num) {
 #endif
 
 static struct block *
-gen_vlan_no_bpf_extensions(int vlan_num) {
+gen_vlan_no_bpf_extensions(int vlan_num)
+{
         struct block *b0, *b1;
 
         /* check for VLAN, including QinQ */
@@ -7985,14 +7973,17 @@ gen_vlan(vlan_num)
 	case DLT_NETANALYZER:
 	case DLT_NETANALYZER_TRANSPARENT:
 #if defined(SKF_AD_VLAN_TAG) && defined(SKF_AD_VLAN_TAG_PRESENT)
-                if (!vlan_stack_depth) {
-                        b0 = gen_vlan_bpf_extensions(vlan_num);
-                        if (!b0)
-                                b0 = gen_vlan_no_bpf_extensions(vlan_num);
-                }
-                else
+		if (vlan_stack_depth == 0) {
+			/*
+			 * Do we need special VLAN handling?
+			 */
+			if (bpf_pcap->bpf_codegen_flags & BPF_SPECIAL_VLAN_HANDLING)
+				b0 = gen_vlan_bpf_extensions(vlan_num);
+			else
+				b0 = gen_vlan_no_bpf_extensions(vlan_num);
+		} else
 #endif
-                        b0 = gen_vlan_no_bpf_extensions(vlan_num);
+			b0 = gen_vlan_no_bpf_extensions(vlan_num);
                 break;
 	default:
 		bpf_error("no VLAN support for data link type %d",
