@@ -4206,22 +4206,9 @@ static int pcap_handle_packet_mmap(
 	 * the filter when the ring became empty, but it can possibly
 	 * happen a lot later... */
 	bp = frame + tp_mac;
-	if (handlep->filter_in_userland && handle->fcode.bf_insns &&
-			(bpf_filter(handle->fcode.bf_insns, bp,
-				tp_len, tp_snaplen) == 0))
-		return 0;
-
-	sll = (void *)frame + TPACKET_ALIGN(handlep->tp_hdrlen);
-	if (!linux_check_direction(handle, sll))
-		return 0;
-
-	/* get required packet info from ring header */
-	pcaphdr.ts.tv_sec = tp_sec;
-	pcaphdr.ts.tv_usec = tp_usec;
-	pcaphdr.caplen = tp_snaplen;
-	pcaphdr.len = tp_len;
 
 	/* if required build in place the sll header*/
+        sll = (void *)frame + TPACKET_ALIGN(handlep->tp_hdrlen);
 	if (handlep->cooked) {
 		struct sll_header *hdrp;
 
@@ -4259,7 +4246,24 @@ static int pcap_handle_packet_mmap(
 		hdrp->sll_halen = htons(sll->sll_halen);
 		memcpy(hdrp->sll_addr, sll->sll_addr, SLL_ADDRLEN);
 		hdrp->sll_protocol = sll->sll_protocol;
+	}
 
+        if (handlep->filter_in_userland && handle->fcode.bf_insns &&
+            (bpf_filter(handle->fcode.bf_insns, bp,
+                        tp_len, tp_snaplen) == 0))
+		return 0;
+
+	if (!linux_check_direction(handle, sll))
+		return 0;
+
+	/* get required packet info from ring header */
+	pcaphdr.ts.tv_sec = tp_sec;
+	pcaphdr.ts.tv_usec = tp_usec;
+	pcaphdr.caplen = tp_snaplen;
+	pcaphdr.len = tp_len;
+
+	/* if required build in place the sll header*/
+	if (handlep->cooked) {
 		/* update packet len */
 		pcaphdr.caplen += SLL_HDR_LEN;
 		pcaphdr.len += SLL_HDR_LEN;
