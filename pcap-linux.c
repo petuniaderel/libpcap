@@ -4306,7 +4306,7 @@ static int pcap_handle_packet_mmap(
                 aux_data.vlan_tag = tp_vlan_tci & 0x0fff;
                 aux_data.vlan_tag_present = tp_vlan_tci_valid;
 
-                if (bpf_filter_with_aux_data(handle->fcode.bf_insns, bp, tp_len, tp_snaplen, &aux_data) == 0)
+                if (bpf_filter_with_aux_data(handle->fcode.bf_insns, bp, tp_len, snaplen, &aux_data) == 0)
                         return 0;
         }
 
@@ -4316,7 +4316,7 @@ static int pcap_handle_packet_mmap(
 	/* get required packet info from ring header */
 	pcaphdr.ts.tv_sec = tp_sec;
 	pcaphdr.ts.tv_usec = tp_usec;
-	pcaphdr.caplen = tp_snaplen;
+	pcaphdr.caplen = snaplen;
 	pcaphdr.len = tp_len;
 
 	/* if required build in place the sll header*/
@@ -4329,7 +4329,7 @@ static int pcap_handle_packet_mmap(
 #if defined(HAVE_TPACKET2) || defined(HAVE_TPACKET3)
 	if (tp_vlan_tci_valid &&
 		handlep->vlan_offset != -1 &&
-		tp_snaplen >= (unsigned int) handlep->vlan_offset)
+		snaplen >= (unsigned int) handlep->vlan_offset)
 	{
 		struct vlan_tag *tag;
 
