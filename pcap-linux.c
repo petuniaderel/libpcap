@@ -198,9 +198,6 @@ static const char rcsid[] _U_ =
   * uses many ring related structs and macros */
 # ifdef TPACKET_HDRLEN
 #  define HAVE_PACKET_RING
-#  ifdef TPACKET3_HDRLEN
-#   define HAVE_TPACKET3
-#  endif /* TPACKET3_HDRLEN */
 #  ifdef TPACKET2_HDRLEN
 #   define HAVE_TPACKET2
 #  else  /* TPACKET2_HDRLEN */
